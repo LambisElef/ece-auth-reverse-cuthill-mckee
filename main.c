@@ -50,8 +50,9 @@ int main() {
             node[i].degree += a[i*n+j];
     }
 
-    // Creates the result vector.
+    // Creates the result vector and counter.
     int *res = (int *)malloc(n*sizeof(int));
+    int resCounter = 0;
 
     // Finds the node with the lowest degree.
     Node peripheralNode;
@@ -62,19 +63,49 @@ int main() {
             peripheralNode = node[i];
 
     // Adds the peripheral node to the reorder vector.
-    res[0] = peripheralNode.id;
+    res[resCounter++] = peripheralNode.id;
 
     // Creates the neighbors' ids vector and counter.
-    int *neighbor = (int *)malloc(n*sizeof(int));
+    int *neighbor = (int *) malloc(n * sizeof(int));
     int neighborCounter = 0;
 
-    // Finds the peripheral node's neighbors.
-    for (int j=0; j<n; j++)
-        if (a[peripheralNode.id*n+j] != 0 && peripheralNode.id != j)
-            neighbor[neighborCounter++] = j;
+    for (int i=0; resCounter<n && i<resCounter; i++) {
+        // Initializes the neighbors' ids vector and counter.
+        for (int j=0; j<n; j++)
+            neighbor[j] = -1;
+        neighborCounter = 0;
 
-    // Sorts the peripheral node's neighbors by ascending degree.
-    mergeSort(node, neighbor, 0, neighborCounter-1);
+        // Selects node to look for neighbors.
+        int nodeId = res[i];
+
+        // Finds the selected node's neighbors.
+        int quit = 0;
+        for (int j=0; j<n; j++) {
+            quit = 0;
+            // Excludes nodes that are already inside of the reorder vector.
+            for (int k=0; k<resCounter && !quit; k++)
+                // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
+                if (j == res[k])
+                    quit = 1;
+            // Checks if node is a valid neighbor.
+            if (a[nodeId*n+j] != 0 && !quit)
+                neighbor[neighborCounter++] = j;
+        }
+
+        // Sorts the selected node's neighbors by ascending degree.
+        mergeSort(node, neighbor, 0, neighborCounter-1);
+
+        // Appends sorted neighbors' ids to result vector.
+        for (int j=0; j<neighborCounter; j++)
+            res[resCounter++] = neighbor[j];
+    }
+
+    /*
+    int i;
+    for (i=0; i<resCounter; i++)
+        printf("%d ", res[i]);
+    printf("\n%d ", i);
+    */
 
     // Cleans up.
     free(neighbor);
