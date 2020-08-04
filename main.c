@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define ARRAY_DIM 100
+#define ARRAY_DIM 10000
 
 typedef struct {
     int id;
@@ -42,7 +42,7 @@ int main() {
     // Creates the nodes.
     Node *node = (Node *)malloc(n*sizeof(Node));
 
-    // Sets the node's ids and calculates their degrees.
+    // Sets the nodes' ids and calculates their degrees.
     for (int i=0; i<n; i++) {
         node[i].id = i;
         node[i].degree = 0;
@@ -54,50 +54,61 @@ int main() {
     int *res = (int *)malloc(n*sizeof(int));
     int resCounter = 0;
 
-    // Finds the node with the lowest degree.
-    Node peripheralNode;
-    peripheralNode.id = -1;
-    peripheralNode.degree = (int)1e9;
-    for (int i=0; i<n; i++)
-        if (node[i].degree < peripheralNode.degree)
-            peripheralNode = node[i];
-
-    // Adds the peripheral node to the reorder vector.
-    res[resCounter++] = peripheralNode.id;
-
     // Creates the neighbors' ids vector and counter.
     int *neighbor = (int *) malloc(n * sizeof(int));
     int neighborCounter = 0;
 
-    for (int i=0; resCounter<n && i<resCounter; i++) {
-        // Initializes the neighbors' ids vector and counter.
-        for (int j=0; j<n; j++)
-            neighbor[j] = -1;
-        neighborCounter = 0;
-
-        // Selects node to look for neighbors.
-        int nodeId = res[i];
-
-        // Finds the selected node's neighbors.
+    // This while loop is needed in case there are disjoint graphs.
+    while (resCounter < n) {
+        // Finds the node with the lowest degree.
+        Node peripheralNode;
+        peripheralNode.id = -1;
+        peripheralNode.degree = (int)1e9;
         int quit = 0;
-        for (int j=0; j<n; j++) {
+        for (int i=0; i<n; i++) {
             quit = 0;
             // Excludes nodes that are already inside of the reorder vector.
             for (int k=0; k<resCounter && !quit; k++)
                 // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
-                if (j == res[k])
+                if (i == res[k])
                     quit = 1;
-            // Checks if node is a valid neighbor.
-            if (a[nodeId*n+j] != 0 && !quit)
-                neighbor[neighborCounter++] = j;
+            if (node[i].degree < peripheralNode.degree && !quit)
+                peripheralNode = node[i];
         }
 
-        // Sorts the selected node's neighbors by ascending degree.
-        mergeSort(node, neighbor, 0, neighborCounter-1);
+        // Adds the peripheral node to the reorder vector.
+        res[resCounter++] = peripheralNode.id;
 
-        // Appends sorted neighbors' ids to result vector.
-        for (int j=0; j<neighborCounter; j++)
-            res[resCounter++] = neighbor[j];
+        for (int i=0; resCounter<n && i<resCounter; i++) {
+            // Initializes the neighbors' ids vector and counter.
+            for (int j=0; j<n; j++)
+                neighbor[j] = -1;
+            neighborCounter = 0;
+
+            // Selects node to look for neighbors.
+            int nodeId = res[i];
+
+            // Finds the selected node's neighbors.
+            int quit = 0;
+            for (int j=0; j<n; j++) {
+                quit = 0;
+                // Excludes nodes that are already inside of the reorder vector.
+                for (int k=0; k<resCounter && !quit; k++)
+                    // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
+                    if (j == res[k])
+                        quit = 1;
+                // Checks if node is a valid neighbor.
+                if (a[nodeId*n+j] != 0 && !quit)
+                    neighbor[neighborCounter++] = j;
+            }
+
+            // Sorts the selected node's neighbors by ascending degree.
+            mergeSort(node, neighbor, 0, neighborCounter-1);
+
+            // Appends sorted neighbors' ids to result vector.
+            for (int j=0; j<neighborCounter; j++)
+                res[resCounter++] = neighbor[j];
+        }
     }
 
     /*
@@ -106,6 +117,14 @@ int main() {
         printf("%d ", res[i]);
     printf("\n%d ", i);
     */
+
+    sprintf(fileName, "res-%d",n);
+    FILE *finalRes = fopen(fileName,"wr");
+
+    for (int i=0; i<n; i++)
+        fprintf(finalRes, "%d,", res[i]);
+
+    fclose(finalRes);
 
     // Cleans up.
     free(neighbor);
