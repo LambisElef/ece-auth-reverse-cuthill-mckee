@@ -160,8 +160,17 @@ void mergeSort(Node* node, int *neighbor, int l, int r) {
         int m = (l + r) / 2;
 
         // Sorts first and second halves.
-        mergeSort(node, neighbor, l, m);
-        mergeSort(node, neighbor, m + 1, r);
+        #pragma omp parallel sections
+        {
+            #pragma omp section
+            {
+                mergeSort(node, neighbor, l, m);
+            }
+            #pragma omp section
+            {
+                mergeSort(node, neighbor, m + 1, r);
+            }
+        }
 
         merge(node, neighbor, l, m, r);
     }
