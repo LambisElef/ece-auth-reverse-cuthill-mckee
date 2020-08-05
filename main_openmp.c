@@ -3,7 +3,7 @@
  *
  *	Author	: Eleftheriadis Charalampos
  *
- *	Date	: 31 July 2020
+ *	Date	: 05 August 2020
  */
 
 #include <stdio.h>
@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
+#include <omp.h>
 
 #define ARRAY_DIM 10000
 
@@ -56,12 +57,14 @@ int main() {
     Node *node = (Node *)malloc(n*sizeof(Node));
 
     // Sets the nodes' ids and calculates their degrees.
+    #pragma omp parallel for
     for (int i=0; i<n; i++) {
         node[i].id = i;
         node[i].degree = 0;
         for (int j = 0; j < n; j++)
             node[i].degree += a[i*n+j];
     }
+    #pragma omp barrier
 
     // Creates the result vector and counter.
     int *res = (int *)malloc(n*sizeof(int));
@@ -77,8 +80,9 @@ int main() {
         Node peripheralNode;
         peripheralNode.id = -1;
         peripheralNode.degree = (int)1e9;
+        int quit = 0;
         for (int i=0; i<n; i++) {
-            int quit = 0;
+            quit = 0;
             // Excludes nodes that are already inside of the reorder vector.
             for (int k=0; k<resCounter && !quit; k++)
                 // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
@@ -101,6 +105,7 @@ int main() {
             int nodeId = res[n-1-i];
 
             // Finds the selected node's neighbors.
+            #pragma omp parallel for
             for (int j=0; j<n; j++) {
                 int quit = 0;
                 // Excludes nodes that are already inside of the reorder vector.
@@ -110,8 +115,10 @@ int main() {
                         quit = 1;
                 // Checks if node is a valid neighbor.
                 if (a[nodeId*n+j] != 0 && !quit)
+                    #pragma omp critical
                     neighbor[neighborCounter++] = j;
             }
+            #pragma omp barrier
 
             // Sorts the selected node's neighbors by ascending degree.
             mergeSort(node, neighbor, 0, neighborCounter-1);
@@ -134,7 +141,7 @@ int main() {
     fclose(finalRes);
 
     // Writes execution time to file.
-    sprintf(fileName, "time-%d.csv",n);
+    sprintf(fileName, "timeOMP-%d.csv",n);
     FILE *time = fopen(fileName,"wr");
     fprintf(time, "%d,", elapsedTime);
     fclose(time);
