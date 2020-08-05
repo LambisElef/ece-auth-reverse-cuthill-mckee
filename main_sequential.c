@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/time.h>
 
-#define ARRAY_DIM 10
+#define ARRAY_DIM 10000
 
 typedef struct {
     int id;
@@ -38,6 +39,10 @@ int main() {
         printf("\n");
     }
     */
+
+    // Saves a timestamp when the algorithm begins.
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
 
     // Creates the nodes.
     Node *node = (Node *)malloc(n*sizeof(Node));
@@ -111,12 +116,22 @@ int main() {
         }
     }
 
-    // Writes res vector to file.
+    // Saves a timestamp when the algorithm ends and calculates the elapsed time in useconds.
+    gettimeofday(&end, NULL);
+    int elapsedTime = (end.tv_sec-start.tv_sec)*(int)1e6 + end.tv_usec-start.tv_usec;
+
+    // Writes res vector to external file.
     sprintf(fileName, "res-%d.csv",n);
     FILE *finalRes = fopen(fileName,"wr");
     for (int i=0; i<n; i++)
         fprintf(finalRes, "%d,", res[i]);
     fclose(finalRes);
+
+    // Writes execution time to file.
+    sprintf(fileName, "time-%d.csv",n);
+    FILE *time = fopen(fileName,"wr");
+    fprintf(time, "%d,", elapsedTime);
+    fclose(time);
 
     // Cleans up.
     free(neighbor);
