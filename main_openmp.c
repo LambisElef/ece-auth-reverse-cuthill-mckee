@@ -80,9 +80,8 @@ int main() {
         Node peripheralNode;
         peripheralNode.id = -1;
         peripheralNode.degree = (int)1e9;
-        int quit = 0;
         for (int i=0; i<n; i++) {
-            quit = 0;
+            int quit = 0;
             // Excludes nodes that are already inside of the reorder vector.
             for (int k=0; k<resCounter && !quit; k++)
                 // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
