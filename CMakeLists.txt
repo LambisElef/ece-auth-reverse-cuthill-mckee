@@ -3,4 +3,4 @@ project(reverse_Cuthill_McKee C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(reverse_Cuthill_McKee main.c)
+add_executable(reverse_Cuthill_McKee main_sequential.c)
