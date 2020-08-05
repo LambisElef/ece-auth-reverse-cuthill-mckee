@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define ARRAY_DIM 10000
+#define ARRAY_DIM 10
 
 typedef struct {
     int id;
@@ -22,7 +22,7 @@ int main() {
 
     // Imports symmetric matrix data from external file.
     size_t readStatus;
-    char fileName[12];
+    char fileName[20];
     sprintf(fileName, "init-%d",n);
     FILE *init = fopen(fileName,"rb");
     readStatus = fread(a, sizeof(uint8_t), n*n, init);
@@ -70,14 +70,14 @@ int main() {
             // Excludes nodes that are already inside of the reorder vector.
             for (int k=0; k<resCounter && !quit; k++)
                 // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
-                if (i == res[k])
+                if (i == res[n-1-k])
                     quit = 1;
             if (node[i].degree < peripheralNode.degree && !quit)
                 peripheralNode = node[i];
         }
 
         // Adds the peripheral node to the reorder vector.
-        res[resCounter++] = peripheralNode.id;
+        res[n-1-resCounter++] = peripheralNode.id;
 
         for (int i=0; resCounter<n && i<resCounter; i++) {
             // Initializes the neighbors' ids vector and counter.
@@ -86,7 +86,7 @@ int main() {
             neighborCounter = 0;
 
             // Selects node to look for neighbors.
-            int nodeId = res[i];
+            int nodeId = res[n-1-i];
 
             // Finds the selected node's neighbors.
             int quit = 0;
@@ -95,7 +95,7 @@ int main() {
                 // Excludes nodes that are already inside of the reorder vector.
                 for (int k=0; k<resCounter && !quit; k++)
                     // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
-                    if (j == res[k])
+                    if (j == res[n-1-k])
                         quit = 1;
                 // Checks if node is a valid neighbor.
                 if (a[nodeId*n+j] != 0 && !quit)
@@ -107,23 +107,15 @@ int main() {
 
             // Appends sorted neighbors' ids to result vector.
             for (int j=0; j<neighborCounter; j++)
-                res[resCounter++] = neighbor[j];
+                res[n-1-resCounter++] = neighbor[j];
         }
     }
 
-    /*
-    int i;
-    for (i=0; i<resCounter; i++)
-        printf("%d ", res[i]);
-    printf("\n%d ", i);
-    */
-
-    sprintf(fileName, "res-%d",n);
+    // Writes res vector to file.
+    sprintf(fileName, "res-%d.csv",n);
     FILE *finalRes = fopen(fileName,"wr");
-
     for (int i=0; i<n; i++)
         fprintf(finalRes, "%d,", res[i]);
-
     fclose(finalRes);
 
     // Cleans up.
