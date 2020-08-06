@@ -13,8 +13,6 @@
 #include <sys/time.h>
 #include <omp.h>
 
-#define ARRAY_DIM 10000
-
 typedef struct {
     int id;
     int degree;
@@ -25,7 +23,14 @@ void merge(Node* node, int *neighbor, int l, int m, int r);
 
 int main() {
 
-    int n = ARRAY_DIM;
+    // Selects dimension of array.
+    int n = 0;
+    printf("Select array dimension: ");
+    scanf("%d",&n);
+    if (n!=100 || n!=1000 || n!= 10000) {
+        printf("Bad dimension size!\n");
+        return -1;
+    }
 
     // Creates the symmetric matrix.
     uint8_t *a = (uint8_t *)malloc(n*n*sizeof(uint8_t));
