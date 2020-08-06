@@ -28,7 +28,7 @@ int main() {
     int n = 0;
     printf("Select array dimension: ");
     scanf("%d",&n);
-    if (n!=100 || n!=1000 || n!= 10000) {
+    if (n!=100 && n!=1000 && n!= 10000) {
         printf("Bad dimension size!\n");
         return -1;
     }
