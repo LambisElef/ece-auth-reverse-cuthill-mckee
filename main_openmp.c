@@ -1,5 +1,5 @@
 /*
- *	File	: main.c
+ *	File	: main_openmp.c
  *
  *	Author	: Eleftheriadis Charalampos
  *
