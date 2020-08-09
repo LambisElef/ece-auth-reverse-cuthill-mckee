@@ -13,4 +13,4 @@ IF(USE_OpenMP)
     ENDIF()
 ENDIF()
 
-add_executable(reverse_Cuthill_McKee main_sequential_v2.c)
+add_executable(reverse_Cuthill_McKee main_sequential.c)

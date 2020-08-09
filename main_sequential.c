@@ -61,11 +61,31 @@ int main() {
     Node *node = (Node *)malloc(n*sizeof(Node));
 
     // Sets the nodes' ids and calculates their degrees.
+    // Also counts total non-zero elements and neighbors per node.
+    int totalElements = 0;
+    int *neighborsPerNode = (int *)malloc(n*sizeof(int));
     for (int i=0; i<n; i++) {
         node[i].id = i;
         node[i].degree = 0;
-        for (int j = 0; j < n; j++)
+        neighborsPerNode[i] = 0;
+        for (int j=0; j<n; j++) {
             node[i].degree += a[i*n+j];
+            if (a[i*n+j] != 0)
+                neighborsPerNode[i] += 1;
+        }
+        totalElements += neighborsPerNode[i];
+    }
+
+    // Creates a transformation for the sparse matrix, keeping only the non-zero elements indexes.
+    int **aST = (int **)malloc(n*sizeof(int *));
+    aST[0] = (int *)malloc(totalElements*sizeof(int));
+    for (int i=1; i<n; i++)
+        aST[i] = aST[i-1] + neighborsPerNode[i-1]*sizeof(int);
+    for (int i=0; i<n; i++) {
+        int k = 0;
+        for (int j=0; j<n && k<neighborsPerNode[i]; j++)
+            if (a[i*n+j] != 0)
+                aST[i][k++] = j;
     }
 
     // Creates the result vector and counter.
@@ -73,7 +93,7 @@ int main() {
     int resCounter = 0;
 
     // Creates the neighbors' ids vector and counter.
-    int *neighbor = (int *) malloc(n * sizeof(int));
+    int *neighbor = (int *)malloc(n*sizeof(int));
     int neighborCounter = 0;
 
     // This while loop is needed in case there are disjoint graphs.
@@ -106,16 +126,15 @@ int main() {
             int nodeId = res[n-1-i];
 
             // Finds the selected node's neighbors.
-            for (int j=0; j<n; j++) {
+            for (int j=0; j<neighborsPerNode[nodeId]; j++) {
                 int quit = 0;
                 // Excludes nodes that are already inside of the reorder vector.
                 for (int k=0; k<resCounter && !quit; k++)
-                    // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
-                    if (j == res[n-1-k])
+                    if (aST[nodeId][j] == res[n-1-k])
                         quit = 1;
                 // Checks if node is a valid neighbor.
-                if (a[nodeId*n+j] != 0 && !quit)
-                    neighbor[neighborCounter++] = j;
+                if (!quit)
+                    neighbor[neighborCounter++] = aST[nodeId][j];
             }
 
             // Sorts the selected node's neighbors by ascending degree.
@@ -147,6 +166,8 @@ int main() {
     // Cleans up.
     free(neighbor);
     free(res);
+    free(aST[0]);
+    free(aST);
     free(node);
     free(a);
 
