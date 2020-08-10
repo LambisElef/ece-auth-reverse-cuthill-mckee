@@ -89,7 +89,7 @@ int main() {
 
     // Calculates the nodes' degrees that are equal to the nodes' edges.
     for (int i=0; i<totalElements; i++)
-        degree[x[i]] += 1;
+        degree[x[i]]++;
 
     gettimeofday(&end[0], NULL);
     gettimeofday(&start[1], NULL);
