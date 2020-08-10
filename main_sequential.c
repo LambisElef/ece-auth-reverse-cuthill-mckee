@@ -171,7 +171,7 @@ int main() {
         fprintf(time, "%d,", elapsedTime[i]);
     fclose(time);
 
-    // Cleans up.
+    // Cleans up. Some variables can be freed earlier, but that would hurt the measured performance when comparing with Matlab.
     free(neighbor);
     free(res);
     free(aT[0]);
@@ -179,8 +179,8 @@ int main() {
     free(edgeCounter);
     free(inRes);
     free(degree);
-    free(x);
     free(y);
+    free(x);
 
     return 0;
 }

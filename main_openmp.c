@@ -8,158 +8,189 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
-#include <omp.h>
 
-typedef struct {
-    int id;
-    int degree;
-} Node;
-
-void mergeSort(Node* node, int *neighbor, int l, int r);
-void merge(Node* node, int *neighbor, int l, int m, int r);
+void mergeSort(int* degree, int *neighbor, int l, int r);
+void merge(int* degree, int *neighbor, int l, int m, int r);
 
 int main() {
 
-    // Selects dimension of array.
+    // Selects sparse matrix file.
+    char initFileName[32];
+    printf("Enter sparse matrix file name: ");
+    scanf("%s", initFileName);
+
+    // Selects dimension of matrix.
     int n = 0;
-    printf("Select array dimension: ");
-    scanf("%d",&n);
-    if (n!=100 && n!=1000 && n!= 10000) {
+    printf("Enter matrix dimension: ");
+    scanf("%d", &n);
+    if (n <= 0) {
         printf("Bad dimension size!\n");
         return -1;
     }
 
-    // Creates the symmetric matrix.
-    uint8_t *a = (uint8_t *)malloc(n*n*sizeof(uint8_t));
+    // Selects number of non-zero elements.
+    int totalElements = 0;
+    printf("Enter number of non-zero elements: ");
+    scanf("%d", &totalElements);
+    if (totalElements <= 0) {
+        printf("Bad dimension size!\n");
+        return -1;
+    }
 
-    // Imports symmetric matrix data from external file.
-    size_t readStatus;
-    char fileName[20];
-    sprintf(fileName, "init-%d",n);
-    FILE *init = fopen(fileName,"rb");
-    readStatus = fread(a, sizeof(uint8_t), n*n, init);
-    if (readStatus != n*n)
-        printf("Could not read conf-init.bin file.\n");
+    // Creates two arrays containing the non-zero elements' indexes.
+    int *x = (int *)malloc(totalElements*sizeof(int));
+    int *y = (int *)malloc(totalElements*sizeof(int));
+
+    // Imports the sparse matrix non-zero elements' indexes from external file.
+    FILE *init = fopen(initFileName,"r");
+    if(init == NULL) {
+        fprintf(stderr, "Cannot open file.\n");
+        return -1;
+    }
+    char line[128];
+    int xTemp, yTemp, xyCounter = 0;
+    size_t lineNo = 0;
+    while(fgets(line, sizeof(line), init)) {
+        lineNo++;
+        if(sscanf(line, "%d,%d", &xTemp, &yTemp) != 2) {
+            fprintf(stderr, "Format error on line %zu.\n", lineNo);
+            return -1;
+        }
+        // Subtracts 1 from index so that elements' indexes begin from 0 instead of 1.
+        x[xyCounter] = xTemp - 1;
+        y[xyCounter] = yTemp - 1;
+        xyCounter++;
+    }
     fclose(init);
 
-    /*
-    // Prints the symmetric array.
-    for (int i=0; i<n; i++) {
-        for (int j = 0; j < n; j++)
-            printf("%d ", a[i*n+j]);
-        printf("\n");
-    }
-    */
-
     // Saves a timestamp when the algorithm begins.
-    struct timeval start, end;
-    gettimeofday(&start, NULL);
+    struct timeval start[3], end[3];
+    gettimeofday(&start[0], NULL);
 
-    // Creates the nodes.
-    Node *node = (Node *)malloc(n*sizeof(Node));
+    // Creates the nodes' degrees vector.
+    int *degree = (int *)malloc(n*sizeof(int));
 
-    // Sets the nodes' ids and calculates their degrees.
+    // Creates the nodes' flags vector that indicate if a node is added to the result vector.
+    int8_t *inRes = (int8_t *)malloc(n*sizeof(int8_t));
+
+    // Creates the nodes' edges counters vector that indicate how many of a node's edges have been added to the transformed sparse matrix.
+    int *edgeCounter = (int *)malloc(n*sizeof(int));
+
+    // Initializes the nodes' degrees, flags and neighbor counters vectors.
     #pragma omp parallel for
     for (int i=0; i<n; i++) {
-        node[i].id = i;
-        node[i].degree = 0;
-        for (int j = 0; j < n; j++)
-            node[i].degree += a[i*n+j];
+        degree[i] = 0;
+        inRes[i] = 0;
+        edgeCounter[i] = 0;
     }
     #pragma omp barrier
+
+    // Calculates the nodes' degrees that are equal to the nodes' edges.
+    for (int i=0; i<totalElements; i++)
+        degree[x[i]] += 1;
+
+    gettimeofday(&end[0], NULL);
+    gettimeofday(&start[1], NULL);
+
+    // Transforms the sparse matrix.
+    int **aT = (int **)malloc(n*sizeof(int *));
+    aT[0] = (int *)malloc(totalElements*sizeof(int));
+    for (int i=1; i<n; i++)
+        aT[i] = aT[i-1] + degree[i-1];
+    for (int i=0; i<totalElements; i++)
+        aT[x[i]][edgeCounter[x[i]]++] = y[i];
+
+    gettimeofday(&end[1], NULL);
+    gettimeofday(&start[2], NULL);
 
     // Creates the result vector and counter.
     int *res = (int *)malloc(n*sizeof(int));
     int resCounter = 0;
 
     // Creates the neighbors' ids vector and counter.
-    int *neighbor = (int *) malloc(n * sizeof(int));
+    int *neighbor = (int *)malloc(n*sizeof(int));
     int neighborCounter = 0;
 
     // This while loop is needed in case there are disjoint graphs.
     while (resCounter < n) {
         // Finds the node with the lowest degree.
-        Node peripheralNode;
-        peripheralNode.id = -1;
-        peripheralNode.degree = (int)1e9;
-        for (int i=0; i<n; i++) {
-            int quit = 0;
-            // Excludes nodes that are already inside of the reorder vector.
-            for (int k=0; k<resCounter && !quit; k++)
-                // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
-                if (i == res[n-1-k])
-                    quit = 1;
-            if (node[i].degree < peripheralNode.degree && !quit)
-                peripheralNode = node[i];
-        }
+        int peripheralNodeId = -1;
+        int peripheralNodeDegree = (int)1e9;
+        for (int i=0; i<n; i++)
+            if (inRes[i] != 1 && degree[i] < peripheralNodeDegree) {
+                peripheralNodeId = i;
+                peripheralNodeDegree = degree[i];
+            }
 
         // Adds the peripheral node to the reorder vector.
-        res[n-1-resCounter++] = peripheralNode.id;
+        res[resCounter++] = peripheralNodeId;
+        inRes[peripheralNodeId] = 1;
 
+        // This for loop iterates through the nodes contained in the result vector.
         for (int i=0; resCounter<n && i<resCounter; i++) {
-            // Initializes the neighbors' ids vector and counter.
-            for (int j=0; j<n; j++)
-                neighbor[j] = -1;
+            // Initializes the neighbors' ids counter.
             neighborCounter = 0;
 
             // Selects node to look for neighbors.
-            int nodeId = res[n-1-i];
+            int nodeId = res[i];
 
             // Finds the selected node's neighbors.
             #pragma omp parallel for
-            for (int j=0; j<n; j++) {
-                int quit = 0;
-                // Excludes nodes that are already inside of the reorder vector.
-                for (int k=0; k<resCounter && !quit; k++)
-                    // Note that "node[j].id" and "j" represent the same thing, because of the way the node[].id element was created.
-                    if (j == res[n-1-k])
-                        quit = 1;
-                // Checks if node is a valid neighbor.
-                if (a[nodeId*n+j] != 0 && !quit)
+            for (int j=0; j<degree[nodeId]; j++)
+                if (inRes[aT[nodeId][j]] != 1)
                     #pragma omp critical
-                    neighbor[neighborCounter++] = j;
-            }
+                    neighbor[neighborCounter++] = aT[nodeId][j];
             #pragma omp barrier
 
             // Sorts the selected node's neighbors by ascending degree.
-            mergeSort(node, neighbor, 0, neighborCounter-1);
+            mergeSort(degree, neighbor, 0, neighborCounter-1);
 
             // Appends sorted neighbors' ids to result vector.
-            for (int j=0; j<neighborCounter; j++)
-                res[n-1-resCounter++] = neighbor[j];
+            for (int j=0; j<neighborCounter; j++) {
+                res[resCounter++] = neighbor[j];
+                inRes[neighbor[j]] = 1;
+            }
         }
     }
 
     // Saves a timestamp when the algorithm ends and calculates the elapsed time in useconds.
-    gettimeofday(&end, NULL);
-    int elapsedTime = (end.tv_sec-start.tv_sec)*(int)1e6 + end.tv_usec-start.tv_usec;
+    gettimeofday(&end[2], NULL);
+    int elapsedTime[3];
+    for (int i=0; i<3; i++)
+        elapsedTime[i] = (end[i].tv_sec-start[i].tv_sec)*(int)1e6 + end[i].tv_usec-start[i].tv_usec;
 
     // Writes res vector to external file.
-    sprintf(fileName, "resOMP-%d.csv",n);
-    FILE *finalRes = fopen(fileName,"wr");
+    char fileName[64];
+    sprintf(fileName, "resOMP-%s", initFileName);
+    FILE *finalRes = fopen(fileName,"w");
     for (int i=0; i<n; i++)
-        fprintf(finalRes, "%d,", res[i]);
+        fprintf(finalRes, "%d,", res[n-1-i]);
     fclose(finalRes);
 
     // Writes execution time to file.
-    sprintf(fileName, "timeOMP-%d.csv",n);
-    FILE *time = fopen(fileName,"wr");
-    fprintf(time, "%d,", elapsedTime);
+    sprintf(fileName, "timeOMP-%s",initFileName);
+    FILE *time = fopen(fileName,"w");
+    for (int i=0; i<3; i++)
+        fprintf(time, "%d,", elapsedTime[i]);
     fclose(time);
 
-    // Cleans up.
+    // Cleans up. Some variables can be freed earlier, but that would hurt the measured performance when comparing with Matlab.
     free(neighbor);
     free(res);
-    free(node);
-    free(a);
+    free(aT[0]);
+    free(aT);
+    free(edgeCounter);
+    free(inRes);
+    free(degree);
+    free(y);
+    free(x);
 
     return 0;
 }
 
-void mergeSort(Node* node, int *neighbor, int l, int r) {
+void mergeSort(int* degree, int *neighbor, int l, int r) {
     if (l < r) {
 
         int m = (l + r) / 2;
@@ -169,19 +200,19 @@ void mergeSort(Node* node, int *neighbor, int l, int r) {
         {
             #pragma omp section
             {
-                mergeSort(node, neighbor, l, m);
+                mergeSort(degree, neighbor, l, m);
             }
             #pragma omp section
             {
-                mergeSort(node, neighbor, m + 1, r);
+                mergeSort(degree, neighbor, m + 1, r);
             }
         }
 
-        merge(node, neighbor, l, m, r);
+        merge(degree, neighbor, l, m, r);
     }
 }
 
-void merge(Node* node, int *neighbor, int l, int m, int r) {
+void merge(int* degree, int *neighbor, int l, int m, int r) {
     int nL = m - l + 1;
     int nR = r - m;
 
@@ -199,7 +230,7 @@ void merge(Node* node, int *neighbor, int l, int m, int r) {
     int j = 0; // Initial index of second subarray
     int k = l; // Initial index of merged subarray
     while (i<nL && j<nR) {
-        if (node[L[i]].degree <= node[R[j]].degree)
+        if (degree[L[i]] <= degree[R[j]])
             neighbor[k] = L[i++];
         else
             neighbor[k] = R[j++];
