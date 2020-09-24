@@ -13,4 +13,4 @@ IF(USE_OpenMP)
     ENDIF()
 ENDIF()
 
-add_executable(reverse_Cuthill_McKee main_openmp.c)
+add_executable(reverse_Cuthill_McKee main.c sort.c sort.h)
