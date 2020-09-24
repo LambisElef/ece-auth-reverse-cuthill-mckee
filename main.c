@@ -12,7 +12,7 @@
 #include <sys/time.h>
 #include "sort.h"
 
-#define OPENMP 1
+#define OPENMP 0
 #define BENCH_SECTORS 1
 #define BENCH_SORT 0
 
@@ -233,13 +233,13 @@ int main() {
 
     // Saves a timestamp when the algorithm ends and calculates the elapsed time in useconds.
     gettimeofday(&end, NULL);
-    int elapsedTime = (end.tv_sec-start.tv_sec)*(int)1e6 + end.tv_usec-start.tv_usec;
+    long elapsedTime = (end.tv_sec-start.tv_sec)*(long)1e6 + end.tv_usec-start.tv_usec;
 
     // Calculates elapsed sectors' times.
     #if BENCH_SECTORS
-    int elapsedTimeSectors[6];
+    long elapsedTimeSectors[6];
     for (int i=0; i<6; i++)
-        elapsedTimeSectors[i] = (endSector[i].tv_sec-startSector[i].tv_sec)*(int)1e6 + endSector[i].tv_usec-startSector[i].tv_usec;
+        elapsedTimeSectors[i] = (endSector[i].tv_sec-startSector[i].tv_sec)*(long)1e6 + endSector[i].tv_usec-startSector[i].tv_usec;
     #endif
 
     // Writes res vector to external file.
@@ -261,7 +261,7 @@ int main() {
     sprintf(fileName, "%s-time.csv", sparseArrayName);
     #endif
     FILE *fileTime = fopen(fileName,"a");
-    fprintf(fileTime, "%d", elapsedTime);
+    fprintf(fileTime, "%ld", elapsedTime);
     fprintf(fileTime, "\n");
     fclose(fileTime);
 
@@ -274,7 +274,7 @@ int main() {
     #endif
     FILE *fileTimeSectors = fopen(fileName,"a");
     for (int i=0; i<6; i++) {
-        fprintf(fileTimeSectors, "%d", elapsedTimeSectors[i]);
+        fprintf(fileTimeSectors, "%ld", elapsedTimeSectors[i]);
         if (i != 5)
             fprintf(fileTimeSectors, ",");
     }
@@ -289,6 +289,7 @@ int main() {
     free(aT);
     free(edgeCounter);
     free(inRes);
+    free(counterDeg);
     free(degree);
     free(y);
     free(x);
