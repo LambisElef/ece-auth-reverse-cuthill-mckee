@@ -1,4 +1,4 @@
-# ece-auth-reverse_cuthill_mckee
+# ece-auth-reverse-cuthill-mckee
 School of Electrical and Computer Engineering, Aristotle University of Thessaloniki
 
 This is the forth and final assignment for the course "Parallel and Distributed Systems" for the 2019-2020 academic year.
